@@ -5,9 +5,9 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.util.Log;
-import android.opengl.GLSurfaceView;
 import com.lunagameserve.accelerama.activities.util.ToastActivity;
 import com.lunagameserve.acceleration.AccelerationCollection;
 import com.lunagameserve.acceleration.AccelerationPoint;
@@ -16,6 +16,7 @@ import com.lunagameserve.gl.geometry.Util;
 import com.lunagameserve.nbt.NBTException;
 import com.lunagameserve.nbt.Tag;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -38,7 +39,7 @@ public class CollectionActivity extends ToastActivity
 
     private AtomicBoolean collecting = new AtomicBoolean(true);
     private long startTime = 0L;
-    private long maxTicks = 1000000000L * 10; /* * 60 * 2;  Two minutes */
+    private long maxTicks = 1000000000L * 5; /* * 60 * 2;  Two minutes */
 
     private AccelerationCollection points = new AccelerationCollection();
 
@@ -69,20 +70,26 @@ public class CollectionActivity extends ToastActivity
         if (collecting.get()) {
             if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
 
-                points.addPoint(
-                        new AccelerationPoint(event.values, System.nanoTime()));
+                AccelerationPoint pt =
+                        new AccelerationPoint(event.values, System.nanoTime());
+
+                if (pt.valid()) {
+                    points.addPoint(pt);
+                }
+
 
                 renderer.getCube().translate(event.values[0] * -0.1f,
-                        event.values[1] * -0.1f,
-                        event.values[2] * -0.1f);
+                                             event.values[1] * -0.1f,
+                                             event.values[2] * -0.1f);
 
                 if ((System.nanoTime() - startTime) > maxTicks) {
                     onCollectionFinished("Collection finished.", true);
                 }
             } else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
-                renderer.getCube().rotate(Util.radToDeg(event.values[0]),
-                        Util.radToDeg(event.values[1]),
-                        Util.radToDeg(event.values[2]));
+                renderer.getCube().rotate(
+                        Util.radToDeg((float)(event.values[0] * Math.PI)),
+                        Util.radToDeg((float)(event.values[1] * Math.PI)),
+                        Util.radToDeg((float)(event.values[2] * Math.PI)));
             }
         }
     }
@@ -92,24 +99,26 @@ public class CollectionActivity extends ToastActivity
         sensorManager.unregisterListener(this, accelerometer);
         sensorManager.unregisterListener(this, rotation);
         toastLong(message);
+        Bundle bundle = null;
         if (pushResults) {
             try {
-                GZIPOutputStream out =
-                        new GZIPOutputStream(
-                                new FileOutputStream(
-                                        new File(getFilesDir(), "output.nbt")));
-                new Tag.Compound.Builder()
-                        .addList("points", points.toList())
-                        .toCompound("collectorOutput").writeNamed(out);
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+                points.writeAsBytes(out);
 
                 out.close();
-            } catch (NBTException e) {
-                e.printStackTrace();
+
+                bundle = new Bundle();
+                bundle.putByteArray("points", out.toByteArray());
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
             Intent intent = new Intent(getBaseContext(), ResultsActivity.class);
+            if (bundle != null) {
+                intent.putExtras(bundle);
+            }
             startActivity(intent);
         }
         finish();

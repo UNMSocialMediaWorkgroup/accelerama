@@ -28,7 +28,13 @@ public class ByteWriter {
 
     public void writeLong(long l) throws IOException {
         byte[] bytes = new byte[8];
-        ByteBuffer.wrap(bytes).putDouble(l);
+        ByteBuffer.wrap(bytes).putLong(l);
+        out.write(bytes);
+    }
+
+    public void writeInt(int i) throws IOException {
+        byte[] bytes = new byte[4];
+        ByteBuffer.wrap(bytes).putInt(i);
         out.write(bytes);
     }
 }

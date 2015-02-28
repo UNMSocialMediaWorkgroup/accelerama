@@ -1,5 +1,6 @@
 package com.lunagameserve.accelerama.activities;
 
+import android.app.ActionBar;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -8,17 +9,15 @@ import android.util.Log;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import com.lunagameserve.accelerama.R;
 import com.lunagameserve.accelerama.activities.util.ToastActivity;
-import com.lunagameserve.accelerama.activities.util.UIActivity;
 import com.lunagameserve.acceleration.AccelerationCollection;
 import com.lunagameserve.compression.Compressor;
-import com.lunagameserve.nbt.NBTException;
-import com.lunagameserve.nbt.Tag;
 
-import java.io.*;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
 /**
  * Created by Ross on 2/27/2015.
@@ -27,13 +26,19 @@ public class ResultsActivity extends ToastActivity {
 
     private AccelerationCollection points = new AccelerationCollection();
 
+    private LinearLayout baseLayout;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.results_layout);
 
-        queueRedraw();
+        this.baseLayout = (LinearLayout)findViewById(R.id.results_layout);
+
+        readPoints();
+
+        baseLayout.post(drawCompressionBox());
     }
 
     private void queueRedraw() {
@@ -44,48 +49,80 @@ public class ResultsActivity extends ToastActivity {
         return new Runnable() {
             @Override
             public void run() {
-                ImageView iv = (ImageView)findViewById(R.id.results_imageview);
-                if (iv.getHeight() <= 0 || iv.getWidth() <= 0) {
-                    Log.d("Results", "Trying to render again...");
-                    queueRedraw();
-                } else {
-                    Log.d("Results", "Making ImageView box");
-                    readPoints();
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    try {
-                        Compressor.UncompressedBuffer.write(out, points);
-                        ByteArrayInputStream in =
-                                new ByteArrayInputStream(out.toByteArray());
-                        Compressor.UncompressedBuffer.read(in);
-                        Bitmap finalBmp = Bitmap.createBitmap(iv.getWidth(), iv
-                                .getHeight(), Bitmap.Config.ARGB_8888);
-                        Compressor.UncompressedBuffer.render(
-                                new Canvas(finalBmp), Compressor.X_POINTS,
-                                Color.WHITE);
-                        iv.setImageBitmap(finalBmp);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                for(Compressor c : Compressor.values()) {
+                    addImageView(c);
                 }
             }
         };
     }
 
+    private Runnable setupImageRunnable(final Compressor compressor,
+                                        final ImageView iv) {
+        return makeUIRunnable(new Runnable() {
+            @Override
+                    public void run() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            compressor.write(out, points);
+            ByteArrayInputStream in =
+                    new ByteArrayInputStream(out.toByteArray());
+            compressor.read(in);
+            Bitmap finalBmp = Bitmap.createBitmap(
+                    points.size(), 768,
+                    Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(finalBmp);
+            compressor.render(c,
+                    Compressor.X_POINTS, Color.RED);
+            compressor.render(c,
+                    Compressor.Y_POINTS, Color.GREEN);
+            compressor.render(c,
+                    Compressor.Z_POINTS, Color.BLUE);
+            iv.setImageBitmap(finalBmp);
+
+            Log.d("Results", "Completed ViewBox");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }}});
+    }
+
+    private void addImageView(Compressor compressor) {
+        Log.d("Results", "Making ImageView box");
+
+        TextView tv = new TextView(getBaseContext());
+        tv.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+        Compressor.StreamStats stats = compressor.ratio(points);
+        tv.setTextSize(20f);
+        tv.setText(compressor.toString() +
+                ": " + stats.ratio + " (" + (stats.length / 1024) + "kb)");
+        baseLayout.addView(tv);
+
+        ImageView iv = new ImageView(getBaseContext());
+        ViewGroup.LayoutParams params =
+                new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+        iv.setLayoutParams(params);
+
+        baseLayout.addView(iv);
+
+        iv.post(setupImageRunnable(compressor, iv));
+
+    }
+
     private void readPoints() {
         try {
-            GZIPInputStream in =
-                new GZIPInputStream(
-                    new FileInputStream(
-                        new File(getFilesDir(), "output.nbt")));
+             ByteArrayInputStream in =
+                     new ByteArrayInputStream(
+                             getIntent().getByteArrayExtra("points"));
 
             points.clear();
-            Tag.Compound root = Tag.readCompound(in);
-            points.fromList(root.getList("points"));
+            points.readFromBytes(in);
             toastLong("Points read!");
 
             in.close();
-        } catch (NBTException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -1,8 +1,14 @@
 package com.lunagameserve.acceleration;
 
+import com.lunagameserve.compression.ByteReader;
+import com.lunagameserve.compression.ByteWriter;
 import com.lunagameserve.nbt.NBTException;
 import com.lunagameserve.nbt.NBTSerializableObject;
 import com.lunagameserve.nbt.Tag;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
  * Created by Ross on 2/27/2015.
@@ -10,6 +16,8 @@ import com.lunagameserve.nbt.Tag;
 public class AccelerationPoint implements NBTSerializableObject {
     private float[] values;
     private long timestamp;
+
+    public static final int SIZE = 20;
 
     public AccelerationPoint() { }
 
@@ -43,6 +51,30 @@ public class AccelerationPoint implements NBTSerializableObject {
                 .addFloat("z", values[2])
                 .addLong("t", timestamp)
                 .toCompound("accelerationPoint");
+    }
+
+    public void writeAsBytes(OutputStream out) throws IOException {
+        ByteWriter writer = new ByteWriter(out);
+        writer.writeFloat(values[0]);
+        writer.writeFloat(values[1]);
+        writer.writeFloat(values[2]);
+        writer.writeLong(timestamp);
+    }
+
+    public void readFromBytes(InputStream in) throws IOException {
+        ByteReader reader = new ByteReader(in);
+        values = new float[3];
+        values[0] = reader.readFloat();
+        values[1] = reader.readFloat();
+        values[2] = reader.readFloat();
+        timestamp = reader.readLong();
+    }
+
+    public boolean valid() {
+        double modulus = Math.sqrt(values[0] * values[0] +
+                                   values[1] * values[1] +
+                                   values[2] * values[2]);
+        return modulus < 1000;
     }
 
     @Override

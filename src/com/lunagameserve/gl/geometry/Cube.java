@@ -1,10 +1,9 @@
 package com.lunagameserve.gl.geometry;
 
+import javax.microedition.khronos.opengles.GL10;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.Objects;
-import javax.microedition.khronos.opengles.GL10;
 
 public class Cube {
     private FloatBuffer vertexBuffer;  // Buffer for vertex-array
