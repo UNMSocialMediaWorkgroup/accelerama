@@ -1,6 +1,5 @@
 package com.lunagameserve.accelerama.activities;
 
-import android.app.ActionBar;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -96,7 +95,9 @@ public class ResultsActivity extends ToastActivity {
         Compressor.StreamStats stats = compressor.ratio(points);
         tv.setTextSize(20f);
         tv.setText(compressor.toString() +
-                ": " + stats.ratio + " (" + (stats.length / 1024) + "kb)");
+                ": " + stats.ratio + " (" + stats.length + "b, or " +
+                ((float)stats.length / CollectionActivity.SECONDS) +
+                "b/s)");
         baseLayout.addView(tv);
 
         ImageView iv = new ImageView(getBaseContext());

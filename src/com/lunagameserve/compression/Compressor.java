@@ -1,13 +1,15 @@
 package com.lunagameserve.compression;
 
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
-import android.hardware.camera2.params.StreamConfigurationMap;
-import android.util.Log;
 import com.lunagameserve.acceleration.AccelerationCollection;
 import com.lunagameserve.acceleration.AccelerationPoint;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -100,51 +102,6 @@ public enum Compressor {
             in.close();
         }
     },
-    DoubleGZip {
-        private ArrayList<AccelerationPoint> list =
-                new ArrayList<AccelerationPoint>();
-
-        @Override
-        public void write(OutputStream rOut, AccelerationCollection collection)
-                throws IOException {
-            GZIPOutputStream g2 = new GZIPOutputStream(rOut);
-            GZIPOutputStream out = new GZIPOutputStream(g2);
-
-            ByteWriter writer = new ByteWriter(out);
-            for (int i = 0; i < collection.size(); i++) {
-                writer.writeFloat(collection.get(i).getX());
-                writer.writeFloat(collection.get(i).getY());
-                writer.writeFloat(collection.get(i).getZ());
-                writer.writeLong(collection.get(i).getTimestamp());
-            }
-            out.close();
-        }
-
-        @Override
-        public void read(InputStream rIn) throws IOException {
-            super.read(rIn);
-            GZIPInputStream g2 = new GZIPInputStream(rIn);
-            GZIPInputStream in = new GZIPInputStream(g2);
-            list.clear();
-            float[] floats = new float[3];
-            long timestamp;
-            ByteReader reader = new ByteReader(in);
-            while(in.available() > 0) {
-                for (int i = 0; i < 3; i++) {
-                    floats[i] = reader.readFloat();
-                }
-                timestamp = reader.readLong();
-                list.add(new AccelerationPoint(floats, timestamp));
-            }
-
-            for (AccelerationPoint p : list) {
-                xPoints.add(p.getX());
-                yPoints.add(p.getY());
-                zPoints.add(p.getZ());
-            }
-            in.close();
-        }
-    },
     ByteDownscaling {
         float maxX;
         float minX;
@@ -172,34 +129,27 @@ public enum Compressor {
             writer.writeFloat(minZ);
 
             for (int i = 0; i < collection.size(); i++) {
-                float x = collection.get(i).getX();
-                byte bx;
-                if (x > 0) {
-                    bx = (byte)((x / maxX) * 127);
-                } else {
-                    bx = (byte)((x / minX) * 127);
-                }
-                out.write(bx);
+                out.write(generatePoint(collection.get(i).getX(),
+                                        minX, maxX - minX));
 
-                float y = collection.get(i).getY();
-                byte by;
-                if (y > 0) {
-                    by = (byte)((y / maxY) * 127);
-                } else {
-                    by = (byte)((y / minY) * 127);
-                }
-                out.write(by);
+                out.write(generatePoint(collection.get(i).getY(),
+                        minY, maxY - minY));
 
-                float z = collection.get(i).getZ();
-                byte bz;
-                if (z > 0) {
-                    bz = (byte)((z / maxZ) * 127);
-                } else {
-                    bz = (byte)((z / minZ) * 127);
-                }
-                out.write(bz);
+                out.write(generatePoint(collection.get(i).getZ(),
+                        minZ, maxZ - minZ));
+
             }
             out.close();
+        }
+
+        private byte generatePoint(float realP, float min, float maxDelta) {
+            float delta = realP - min;
+            float ratio = delta / maxDelta;
+            return (byte) (ratio * 127);
+        }
+
+        private float fromPoint(byte pt, float min, float maxDelta) {
+            return (pt / 127f) * maxDelta + min;
         }
 
         @Override
@@ -214,32 +164,9 @@ public enum Compressor {
             minZ = reader.readFloat();
 
             while (in.available() > 0) {
-                byte x = (byte)in.read();
-                float fx;
-                if (x < 0) {
-                    fx = ((float)x) * minX;
-                } else {
-                    fx = ((float)x) * maxX;
-                }
-                xPoints.add(fx);
-
-                byte y = (byte)in.read();
-                float fy;
-                if (y < 0) {
-                    fy = ((float)y) * minY;
-                } else {
-                    fy = ((float)y) * maxY;
-                }
-                yPoints.add(fy);
-
-                byte z = (byte)in.read();
-                float fz;
-                if (z < 0) {
-                    fz = ((float)z) * minZ;
-                } else {
-                    fz = ((float)z) * maxZ;
-                }
-                zPoints.add(fz);
+                xPoints.add(fromPoint((byte)in.read(), minX, maxX - minX));
+                yPoints.add(fromPoint((byte)in.read(), minY, maxY - minY));
+                zPoints.add(fromPoint((byte)in.read(), minZ, maxZ - minZ));
             }
             in.close();
         }
@@ -272,34 +199,27 @@ public enum Compressor {
             writer.writeFloat(minZ);
 
             for (int i = 0; i < collection.size(); i++) {
-                float x = collection.get(i).getX();
-                byte bx;
-                if (x > 0) {
-                    bx = (byte)((x / maxX) * 127);
-                } else {
-                    bx = (byte)((x / minX) * 127);
-                }
-                out.write(bx);
+                out.write(generatePoint(collection.get(i).getX(),
+                        minX, maxX - minX));
 
-                float y = collection.get(i).getY();
-                byte by;
-                if (y > 0) {
-                    by = (byte)((y / maxY) * 127);
-                } else {
-                    by = (byte)((y / minY) * 127);
-                }
-                out.write(by);
+                out.write(generatePoint(collection.get(i).getY(),
+                        minY, maxY - minY));
 
-                float z = collection.get(i).getZ();
-                byte bz;
-                if (z > 0) {
-                    bz = (byte)((z / maxZ) * 127);
-                } else {
-                    bz = (byte)((z / minZ) * 127);
-                }
-                out.write(bz);
+                out.write(generatePoint(collection.get(i).getZ(),
+                        minZ, maxZ - minZ));
+
             }
             out.close();
+        }
+
+        private byte generatePoint(float realP, float min, float maxDelta) {
+            float delta = realP - min;
+            float ratio = delta / maxDelta;
+            return (byte) (ratio * 127);
+        }
+
+        private float fromPoint(byte pt, float min, float maxDelta) {
+            return (pt / 127f) * maxDelta + min;
         }
 
         @Override
@@ -315,36 +235,182 @@ public enum Compressor {
             minZ = reader.readFloat();
 
             while (in.available() > 0) {
-                byte x = (byte)in.read();
-                float fx;
-                if (x < 0) {
-                    fx = ((float)x) * minX;
-                } else {
-                    fx = ((float)x) * maxX;
-                }
-                xPoints.add(fx);
-
-                byte y = (byte)in.read();
-                float fy;
-                if (y < 0) {
-                    fy = ((float)y) * minY;
-                } else {
-                    fy = ((float)y) * maxY;
-                }
-                yPoints.add(fy);
-
-                byte z = (byte)in.read();
-                float fz;
-                if (z < 0) {
-                    fz = ((float)z) * minZ;
-                } else {
-                    fz = ((float)z) * maxZ;
-                }
-                zPoints.add(fz);
+                xPoints.add(fromPoint((byte)in.read(), minX, maxX - minX));
+                yPoints.add(fromPoint((byte)in.read(), minY, maxY - minY));
+                zPoints.add(fromPoint((byte)in.read(), minZ, maxZ - minZ));
             }
             in.close();
         }
+    },
+    NybbleDownsampling {
+        float maxX;
+        float minX;
+        float maxY;
+        float minY;
+        float maxZ;
+        float minZ;
+
+        @Override
+        public void write(OutputStream out, AccelerationCollection collection)
+                throws IOException {
+            maxX = collection.maxX();
+            minX = collection.minX();
+            maxY = collection.maxY();
+            minY = collection.minY();
+            maxZ = collection.maxZ();
+            minZ = collection.minZ();
+
+            BitWriter bwrite = new BitWriter(out);
+            ByteWriter writer = new ByteWriter(bwrite);
+            writer.writeFloat(maxX);
+            writer.writeFloat(minX);
+            writer.writeFloat(maxY);
+            writer.writeFloat(minY);
+            writer.writeFloat(maxZ);
+            writer.writeFloat(minZ);
+
+            for (int i = 0; i < collection.size(); i++) {
+                byte nyb = (byte)(
+                        (generatePoint(collection.get(i).getX(),
+                                minX, maxX - minX) >> NYBBLE_LEFT));
+                bwrite.writeBits(nyb, NYBBLE_SIZE);
+
+                bwrite.writeBits(
+                        generatePoint(
+                                collection.get(i).getY(),
+                                minY, maxY - minY) >> NYBBLE_LEFT, NYBBLE_SIZE);
+
+                bwrite.writeBits(
+                        generatePoint(
+                                collection.get(i).getZ(),
+                                minZ, maxZ - minZ) >> NYBBLE_LEFT, NYBBLE_SIZE);
+            }
+            writer.close();
+        }
+
+        private byte generatePoint(float realP, float min, float maxDelta) {
+            float delta = realP - min;
+            float ratio = delta / maxDelta;
+            return (byte) (ratio * 127);
+        }
+
+        private float fromPoint(byte pt, float min, float maxDelta) {
+            return (pt / 127f) * maxDelta + min;
+        }
+
+        @Override
+        public void read(InputStream in) throws IOException {
+            super.read(in);
+            BitReader bread = new BitReader(in);
+            ByteReader reader = new ByteReader(bread);
+            maxX = reader.readFloat();
+            minX = reader.readFloat();
+            maxY = reader.readFloat();
+            minY = reader.readFloat();
+            maxZ = reader.readFloat();
+            minZ = reader.readFloat();
+
+            while (in.available() > 0) {
+                xPoints.add(fromPoint((byte)(bread.readBits(NYBBLE_SIZE) <<
+                                NYBBLE_LEFT),
+                        minX, maxX - minX));
+                yPoints.add(fromPoint((byte)(bread.readBits(NYBBLE_SIZE) <<
+                                NYBBLE_LEFT),
+                        minY, maxY - minY));
+                zPoints.add(fromPoint((byte)(bread.readBits(NYBBLE_SIZE) <<
+                                NYBBLE_LEFT),
+                        minZ, maxZ - minZ));
+            }
+            reader.close();
+        }
+    },
+    NybbleDownsamplingGZip {
+        float maxX;
+        float minX;
+        float maxY;
+        float minY;
+        float maxZ;
+        float minZ;
+
+        @Override
+        public void write(OutputStream rOut, AccelerationCollection collection)
+                throws IOException {
+            GZIPOutputStream out = new GZIPOutputStream(rOut);
+            maxX = collection.maxX();
+            minX = collection.minX();
+            maxY = collection.maxY();
+            minY = collection.minY();
+            maxZ = collection.maxZ();
+            minZ = collection.minZ();
+
+            BitWriter bwrite = new BitWriter(out);
+            ByteWriter writer = new ByteWriter(bwrite);
+            writer.writeFloat(maxX);
+            writer.writeFloat(minX);
+            writer.writeFloat(maxY);
+            writer.writeFloat(minY);
+            writer.writeFloat(maxZ);
+            writer.writeFloat(minZ);
+
+            for (int i = 0; i < collection.size(); i++) {
+                byte nyb = (byte)(
+                        (generatePoint(collection.get(i).getX(),
+                                minX, maxX - minX) >> NYBBLE_LEFT));
+                bwrite.writeBits(nyb, NYBBLE_SIZE);
+
+                bwrite.writeBits(
+                        generatePoint(
+                                collection.get(i).getY(),
+                                minY, maxY - minY) >> NYBBLE_LEFT, NYBBLE_SIZE);
+
+                bwrite.writeBits(
+                        generatePoint(
+                                collection.get(i).getZ(),
+                                minZ, maxZ - minZ) >> NYBBLE_LEFT, NYBBLE_SIZE);
+            }
+            writer.close();
+        }
+
+        private byte generatePoint(float realP, float min, float maxDelta) {
+            float delta = realP - min;
+            float ratio = delta / maxDelta;
+            return (byte) (ratio * 127);
+        }
+
+        private float fromPoint(byte pt, float min, float maxDelta) {
+            return (pt / 127f) * maxDelta + min;
+        }
+
+        @Override
+        public void read(InputStream rIn) throws IOException {
+            super.read(rIn);
+            GZIPInputStream in = new GZIPInputStream(rIn);
+            BitReader bread = new BitReader(in);
+            ByteReader reader = new ByteReader(bread);
+            maxX = reader.readFloat();
+            minX = reader.readFloat();
+            maxY = reader.readFloat();
+            minY = reader.readFloat();
+            maxZ = reader.readFloat();
+            minZ = reader.readFloat();
+
+            while (in.available() > 0) {
+                xPoints.add(fromPoint((byte)(bread.readBits(NYBBLE_SIZE) <<
+                                NYBBLE_LEFT),
+                        minX, maxX - minX));
+                yPoints.add(fromPoint((byte)(bread.readBits(NYBBLE_SIZE) <<
+                                NYBBLE_LEFT),
+                        minY, maxY - minY));
+                zPoints.add(fromPoint((byte)(bread.readBits(NYBBLE_SIZE) <<
+                                NYBBLE_LEFT),
+                        minZ, maxZ - minZ));
+            }
+            reader.close();
+        }
     };
+
+    protected static final int NYBBLE_SIZE = 4;
+    protected static final int NYBBLE_LEFT = 8 - NYBBLE_SIZE;
 
     protected ArrayList<Float> xPoints = new ArrayList<Float>();
     protected ArrayList<Float> yPoints = new ArrayList<Float>();
@@ -388,15 +454,7 @@ public enum Compressor {
         zPoints.clear();
     }
 
-    private void makePointsPositive() {
-        for (int i = 0; i < xPoints.size(); i++) {
-            xPoints.set(i, Math.abs(xPoints.get(i)));
-            yPoints.set(i, Math.abs(yPoints.get(i)));
-            zPoints.set(i, Math.abs(zPoints.get(i)));
-        }
-    }
-
-    private float heightDelta(ArrayList<Float> pts) {
+    private float maxPoint(ArrayList<Float> pts) {
         float max = pts.get(0);
         for (float d : pts) {
             if (max < d) {
@@ -416,9 +474,12 @@ public enum Compressor {
         return min;
     }
 
+    private float heightDelta(ArrayList<Float> pts) {
+        return maxPoint(pts) - minPoint(pts);
+    }
+
     public void render(Canvas c, int pointType, int color) {
         ArrayList<Float> pts;
-        makePointsPositive();
         switch(pointType) {
             case X_POINTS: pts = xPoints; break;
             case Y_POINTS: pts = yPoints; break;
@@ -427,16 +488,21 @@ public enum Compressor {
         }
 
         float dx = ((float)c.getWidth()) / ((float)pts.size());
-        float dy = ((float)c.getHeight()) / (heightDelta(pts));
+        float dy = ((float) c.getHeight()) / (heightDelta(pts));
+        float sy = minPoint(pts);
 
         Paint paint = new Paint();
         paint.setColor(color);
 
+        Paint axisPaint = new Paint();
+        axisPaint.setColor(Color.GRAY);
+        c.drawLine(0, (0f - sy) * dy, c.getWidth(), (0f - sy) * dy, axisPaint);
+
         for (int i = 1; i < pts.size(); i++) {
             float x1 = (i - 1) * dx;
             float x2 = i * dx;
-            float y1 = (pts.get(i - 1)) * dy;
-            float y2 = (pts.get(i)) * dy;
+            float y1 = (pts.get(i - 1) - sy) * dy;
+            float y2 = (pts.get(i) - sy) * dy;
 
             c.drawLine(x1, y1, x2, y2, paint);
         }

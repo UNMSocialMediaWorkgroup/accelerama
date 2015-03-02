@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
  * Created by Ross on 2/27/2015.
  */
 public class ByteWriter {
-    private OutputStream out;
+    private final OutputStream out;
 
     public ByteWriter(OutputStream out) {
         this.out = out;
@@ -36,5 +36,9 @@ public class ByteWriter {
         byte[] bytes = new byte[4];
         ByteBuffer.wrap(bytes).putInt(i);
         out.write(bytes);
+    }
+
+    public void close() throws IOException {
+        out.close();
     }
 }

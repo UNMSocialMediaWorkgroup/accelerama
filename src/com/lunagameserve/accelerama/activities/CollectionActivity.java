@@ -13,15 +13,10 @@ import com.lunagameserve.acceleration.AccelerationCollection;
 import com.lunagameserve.acceleration.AccelerationPoint;
 import com.lunagameserve.gl.CubeRenderer;
 import com.lunagameserve.gl.geometry.Util;
-import com.lunagameserve.nbt.NBTException;
-import com.lunagameserve.nbt.Tag;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.zip.GZIPOutputStream;
 
 /**
  * Created by Ross on 2/27/2015.
@@ -39,7 +34,8 @@ public class CollectionActivity extends ToastActivity
 
     private AtomicBoolean collecting = new AtomicBoolean(true);
     private long startTime = 0L;
-    private long maxTicks = 1000000000L * 5; /* * 60 * 2;  Two minutes */
+    public static final int SECONDS = 5;
+    private long maxTicks = 1000000000L * SECONDS;
 
     private AccelerationCollection points = new AccelerationCollection();
 
@@ -76,7 +72,6 @@ public class CollectionActivity extends ToastActivity
                 if (pt.valid()) {
                     points.addPoint(pt);
                 }
-
 
                 renderer.getCube().translate(event.values[0] * -0.1f,
                                              event.values[1] * -0.1f,

@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
  * Created by Ross on 2/27/2015.
  */
 public class ByteReader {
-    private InputStream in;
+    private final InputStream in;
 
     public ByteReader(InputStream in) {
         this.in = in;
@@ -32,5 +32,9 @@ public class ByteReader {
             bytes[i] = (byte)in.read();
         }
         return bytes;
+    }
+
+    public void close() throws IOException {
+        in.close();
     }
 }
