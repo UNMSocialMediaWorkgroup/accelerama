@@ -19,26 +19,71 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Created by Ross on 2/27/2015.
+ * Main activity for Accelerama, which gathers Accelerometer data
+ * then packages it as a result and pushes into a
+ * {@link com.lunagameserve.accelerama.activities.ResultsActivity}
+ * for viewing.
+ *
+ * @author Six
+ * @since March 2, 2015
  */
 public class CollectionActivity extends ToastActivity
                                 implements SensorEventListener{
-
-    private GLSurfaceView glView;
-
+    /**
+     * The {@link com.lunagameserve.gl.CubeRenderer} used to render the
+     * {@link com.lunagameserve.gl.geometry.Cube} onto a
+     * {@link android.opengl.GLSurfaceView}.
+     */
     private CubeRenderer renderer;
 
+    /**
+     * The {@link android.hardware.SensorManager} which is currently running
+     * on the target device.
+     */
     private SensorManager sensorManager;
+
+    /**
+     * The {@link android.hardware.Sensor} representing the device's linear
+     * acceleration gatherer.
+     */
     private Sensor accelerometer;
+
+    /**
+     * The {@link android.hardware.Sensor} representing a hardware sensor which
+     * collects orientation information about the device.
+     */
     private Sensor rotation;
 
+    /**
+     * A thread-safe flag which describes the current status of the
+     * {@link android.hardware.Sensor}s in this
+     * {@link com.lunagameserve.accelerama.activities.CollectionActivity}.
+     */
     private AtomicBoolean collecting = new AtomicBoolean(true);
-    private long startTime = 0L;
-    public static final int SECONDS = 5;
-    private long maxTicks = 1000000000L * SECONDS;
 
+    /**
+     * The device time, in nanoseconds, that this
+     * {@link com.lunagameserve.accelerama.activities.CollectionActivity}
+     * began collecting information.
+     */
+    private long startTime = 0L;
+
+    /**
+     * The number of seconds which this
+     * {@link com.lunagameserve.accelerama.activities.CollectionActivity}
+     * will spend collecting data from the device.
+     */
+    public static final int SECONDS = 5;
+
+    /**
+     * A collection of accelerometer points which will be added to while
+     * this device is collecting, and pushed to a
+     * {@link com.lunagameserve.accelerama.activities.ResultsActivity}
+     * when collection is complete
+     */
     private AccelerationCollection points = new AccelerationCollection();
 
+    /** {@inheritDoc} */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -48,8 +93,8 @@ public class CollectionActivity extends ToastActivity
                 sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
             accelerometer =
                 sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-            this.glView = new GLSurfaceView(this);
-            this.renderer = new CubeRenderer(getBaseContext());
+            GLSurfaceView glView = new GLSurfaceView(this);
+            this.renderer = new CubeRenderer();
             glView.setRenderer(this.renderer);
             this.setContentView(glView);
             toastLong("Collecting Accelerometer data. 2 minutes remain.");
@@ -61,6 +106,7 @@ public class CollectionActivity extends ToastActivity
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void onSensorChanged(SensorEvent event) {
         if (collecting.get()) {
@@ -77,6 +123,7 @@ public class CollectionActivity extends ToastActivity
                                              event.values[1] * -0.1f,
                                              event.values[2] * -0.1f);
 
+                long maxTicks = 1000000000L * SECONDS;
                 if ((System.nanoTime() - startTime) > maxTicks) {
                     onCollectionFinished("Collection finished.", true);
                 }
@@ -89,6 +136,18 @@ public class CollectionActivity extends ToastActivity
         }
     }
 
+    /**
+     * To be called when this
+     * {@link com.lunagameserve.accelerama.activities.CollectionActivity}
+     * is finished collecting data for any reason.
+     *
+     * @param message The message to {@link android.widget.Toast} to the
+     *                user on calling this method.
+     *
+     * @param pushResults If {@code true}, will create a
+     *          {@link com.lunagameserve.accelerama.activities.ResultsActivity},
+     *                    and send it the gathered data, and start it.
+     */
     private void onCollectionFinished(String message, boolean pushResults) {
         collecting.set(false);
         sensorManager.unregisterListener(this, accelerometer);
@@ -119,6 +178,7 @@ public class CollectionActivity extends ToastActivity
         finish();
     }
 
+    /** {@inheritDoc} */
     @Override
     public void onBackPressed() {
         super.onBackPressed();
@@ -127,6 +187,7 @@ public class CollectionActivity extends ToastActivity
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         if (sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {

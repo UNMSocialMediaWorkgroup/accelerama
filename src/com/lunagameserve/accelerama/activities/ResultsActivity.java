@@ -19,14 +19,30 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 /**
- * Created by Ross on 2/27/2015.
+ * The {@link android.app.Activity} which displays the results
+ * gathered from a
+ * {@link com.lunagameserve.accelerama.activities.CollectionActivity}.
+ *
+ * @author Six
+ * @since March 2, 2015
  */
 public class ResultsActivity extends ToastActivity {
 
+    /**
+     * The collection of
+     * {@link com.lunagameserve.acceleration.AccelerationPoint}s which are
+     * to be analyzed.
+     */
     private AccelerationCollection points = new AccelerationCollection();
 
+    /**
+     * The base {@link android.text.Layout} of this
+     * {@link com.lunagameserve.accelerama.activities.ResultsActivity}
+     * which holds all results.
+     */
     private LinearLayout baseLayout;
 
+    /** {@inheritDoc} */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,15 +51,25 @@ public class ResultsActivity extends ToastActivity {
 
         this.baseLayout = (LinearLayout)findViewById(R.id.results_layout);
 
-        readPoints();
+        try {
+            readPoints();
+        } catch (IOException e) {
+            toastLong("Could not read datapoints from previous action. " +
+                      "Stopping.");
+            e.printStackTrace();
+            finish();
+        }
 
         baseLayout.post(drawCompressionBox());
     }
 
-    private void queueRedraw() {
-        new Thread(makeUIRunnable(drawCompressionBox())).start();
-    }
-
+    /**
+     * Generates a {@link java.lang.Runnable} which delegates the drawing of
+     * all UI elements.
+     *
+     * @return A {@link java.lang.Runnable} which delegates the drawing of
+     *         all UI elements.
+     */
     private Runnable drawCompressionBox() {
         return new Runnable() {
             @Override
@@ -55,6 +81,23 @@ public class ResultsActivity extends ToastActivity {
         };
     }
 
+    /**
+     * Generates a {@link java.lang.Runnable} which delegates the setup
+     * of an {@link android.widget.ImageView}s involved with using a single
+     * specified {@link com.lunagameserve.compression.Compressor} on
+     * {@link #points}.
+     *
+     * @param compressor The {@link com.lunagameserve.compression.Compressor}
+     *                   used to generate the interior of a specified
+     *                   {@link android.widget.ImageView}.
+     *
+     * @param iv The {@link android.widget.ImageView} to render the output
+     *           of {@code compressor}.
+     *
+     * @return The {@link java.lang.Runnable}, which will delegate to the UI
+     *         {@link java.lang.Thread}, which performs this
+     *         {@link android.widget.ImageView} setup.
+     */
     private Runnable setupImageRunnable(final Compressor compressor,
                                         final ImageView iv) {
         return makeUIRunnable(new Runnable() {
@@ -84,6 +127,18 @@ public class ResultsActivity extends ToastActivity {
         }}});
     }
 
+    /**
+     * Adds an {@link android.widget.ImageView} to {@link #baseLayout} which
+     * will eventually contain the compressed output of a specified compressor.
+     * This method delegates the rendering to the new
+     * {@link android.widget.ImageView}; no further action is needed for this
+     * to happen.
+     *
+     * @param compressor The {@link com.lunagameserve.compression.Compressor}
+     *                   which will be used to compress {@link #points}, then
+     *                   used to render to the created
+     *                   {@link android.widget.ImageView}.
+     */
     private void addImageView(Compressor compressor) {
         Log.d("Results", "Making ImageView box");
 
@@ -113,19 +168,22 @@ public class ResultsActivity extends ToastActivity {
 
     }
 
-    private void readPoints() {
-        try {
-             ByteArrayInputStream in =
-                     new ByteArrayInputStream(
-                             getIntent().getByteArrayExtra("points"));
+    /**
+     * Reads an {@link com.lunagameserve.acceleration.AccelerationCollection}
+     * from the {@link android.content.Intent} {@code byte[]} extra named
+     * {@code "points"} and stores it into {@link #points}. This
+     * {@link com.lunagameserve.acceleration.AccelerationCollection#clear()}s
+     * {@link #points} when called.
+     */
+    private void readPoints() throws IOException {
+        ByteArrayInputStream in =
+                new ByteArrayInputStream(
+                        getIntent().getByteArrayExtra("points"));
 
-            points.clear();
-            points.readFromBytes(in);
-            toastLong("Points read!");
+        points.clear();
+        points.readFromBytes(in);
+        toastLong("Points read!");
 
-            in.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        in.close();
     }
 }

@@ -15,14 +15,20 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * Created by Ross on 2/27/2015.
+ * An enumeration of both lossless and lossy floating point stream compression
+ * algorithms.
+ *
+ * @author Six
+ * @since March 2, 2015
  */
 public enum Compressor {
+    /**
+     * A {@link com.lunagameserve.compression.Compressor} which performs no
+     * compression. Used as a benchmark.
+     */
     UncompressedBuffer {
 
-        private ArrayList<AccelerationPoint> list =
-                new ArrayList<AccelerationPoint>();
-
+        /** {@inheritDoc} */
         @Override
         public void write(OutputStream out, AccelerationCollection collection)
                 throws IOException {
@@ -36,10 +42,12 @@ public enum Compressor {
             out.close();
         }
 
+        /** {@inheritDoc} */
         @Override
         public void read(InputStream in) throws IOException {
             super.read(in);
-            list.clear();
+            ArrayList<AccelerationPoint> list =
+                    new ArrayList<AccelerationPoint>();
             float[] floats = new float[3];
             long timestamp;
             ByteReader reader = new ByteReader(in);
@@ -59,10 +67,15 @@ public enum Compressor {
             in.close();
         }
     },
+    /**
+     * A {@link com.lunagameserve.compression.Compressor} which simply runs
+     * the uncompressed data through a {@link java.util.zip.GZIPOutputStream}.
+     */
     StandardGZip {
         private ArrayList<AccelerationPoint> list =
                 new ArrayList<AccelerationPoint>();
 
+        /** {@inheritDoc} */
         @Override
         public void write(OutputStream rOut, AccelerationCollection collection)
                 throws IOException {
@@ -78,6 +91,7 @@ public enum Compressor {
             out.close();
         }
 
+        /** {@inheritDoc} */
         @Override
         public void read(InputStream rIn) throws IOException {
             super.read(rIn);
@@ -102,6 +116,10 @@ public enum Compressor {
             in.close();
         }
     },
+    /**
+     * A {@link com.lunagameserve.compression.Compressor} which downscales each
+     * floating point value to a byte value.
+     */
     ByteDownscaling {
         float maxX;
         float minX;
@@ -110,6 +128,7 @@ public enum Compressor {
         float maxZ;
         float minZ;
 
+        /** {@inheritDoc} */
         @Override
         public void write(OutputStream out, AccelerationCollection collection)
                 throws IOException {
@@ -152,6 +171,7 @@ public enum Compressor {
             return (pt / 127f) * maxDelta + min;
         }
 
+        /** {@inheritDoc} */
         @Override
         public void read(InputStream in) throws IOException {
             super.read(in);
@@ -171,6 +191,11 @@ public enum Compressor {
             in.close();
         }
     },
+    /**
+     * A {@link com.lunagameserve.compression.Compressor} which downscales each
+     * floating point value to a byte value, then runs all bytes through a
+     * {@link java.util.zip.GZIPOutputStream}.
+     */
     ByteDownscalingGZip {
         float maxX;
         float minX;
@@ -179,6 +204,7 @@ public enum Compressor {
         float maxZ;
         float minZ;
 
+        /** {@inheritDoc} */
         @Override
         public void write(OutputStream rOut, AccelerationCollection collection)
                 throws IOException {
@@ -222,6 +248,7 @@ public enum Compressor {
             return (pt / 127f) * maxDelta + min;
         }
 
+        /** {@inheritDoc} */
         @Override
         public void read(InputStream rIn) throws IOException {
             super.read(rIn);
@@ -242,6 +269,10 @@ public enum Compressor {
             in.close();
         }
     },
+    /**
+     * A {@link com.lunagameserve.compression.Compressor} which downscales each
+     * floating point value to a nybble value.
+     */
     NybbleDownsampling {
         float maxX;
         float minX;
@@ -250,6 +281,7 @@ public enum Compressor {
         float maxZ;
         float minZ;
 
+        /** {@inheritDoc} */
         @Override
         public void write(OutputStream out, AccelerationCollection collection)
                 throws IOException {
@@ -288,16 +320,45 @@ public enum Compressor {
             writer.close();
         }
 
+        /**
+         * Converts a specified floating point value to a {@code byte} value
+         * which is used during output.
+         *
+         * @param realP The floating point value to convert.
+         *
+         * @param min The minimum floating point value in the data set.
+         *
+         * @param maxDelta The range of the floating point values in the
+         *                 data set.
+         *
+         * @return The {@code byte} value representing the scaled value which
+         *         should be used for output.
+         */
         private byte generatePoint(float realP, float min, float maxDelta) {
             float delta = realP - min;
             float ratio = delta / maxDelta;
             return (byte) (ratio * 127);
         }
 
+        /**
+         * Converts a specified {@code byte} value to a {@code float} which
+         * is used during decompression.
+         *
+         * @param pt The {@code byte} value which is read duing decompression.
+         *
+         * @param min The minimum floating point value in the data set.
+         *
+         * @param maxDelta The range of the floating point values in the
+         *                 data set.
+         *
+         * @return The {@code float} value representing the decompressed
+         *         value.
+         */
         private float fromPoint(byte pt, float min, float maxDelta) {
             return (pt / 127f) * maxDelta + min;
         }
 
+        /** {@inheritDoc} */
         @Override
         public void read(InputStream in) throws IOException {
             super.read(in);
@@ -324,6 +385,11 @@ public enum Compressor {
             reader.close();
         }
     },
+    /**
+     * A {@link com.lunagameserve.compression.Compressor} which downscales each
+     * floating point value to a nybble value, then runs all bytes through a
+     * {@link java.util.zip.GZIPOutputStream}.
+     */
     NybbleDownsamplingGZip {
         float maxX;
         float minX;
@@ -332,6 +398,7 @@ public enum Compressor {
         float maxZ;
         float minZ;
 
+        /** {@inheritDoc} */
         @Override
         public void write(OutputStream rOut, AccelerationCollection collection)
                 throws IOException {
@@ -371,16 +438,45 @@ public enum Compressor {
             writer.close();
         }
 
+        /**
+         * Converts a specified floating point value to a {@code byte} value
+         * which is used during output.
+         *
+         * @param realP The floating point value to convert.
+         *
+         * @param min The minimum floating point value in the data set.
+         *
+         * @param maxDelta The range of the floating point values in the
+         *                 data set.
+         *
+         * @return The {@code byte} value representing the scaled value which
+         *         should be used for output.
+         */
         private byte generatePoint(float realP, float min, float maxDelta) {
             float delta = realP - min;
             float ratio = delta / maxDelta;
             return (byte) (ratio * 127);
         }
 
+        /**
+         * Converts a specified {@code byte} value to a {@code float} which
+         * is used during decompression.
+         *
+         * @param pt The {@code byte} value which is read duing decompression.
+         *
+         * @param min The minimum floating point value in the data set.
+         *
+         * @param maxDelta The range of the floating point values in the
+         *                 data set.
+         *
+         * @return The {@code float} value representing the decompressed
+         *         value.
+         */
         private float fromPoint(byte pt, float min, float maxDelta) {
             return (pt / 127f) * maxDelta + min;
         }
 
+        /** {@inheritDoc} */
         @Override
         public void read(InputStream rIn) throws IOException {
             super.read(rIn);
@@ -409,7 +505,15 @@ public enum Compressor {
         }
     };
 
+    /**
+     * The size of the "nybble" written by the two nybble compression
+     * algorithms.
+     */
     protected static final int NYBBLE_SIZE = 4;
+
+    /**
+     * The remainder of a byte if {@link #NYBBLE_SIZE} bits are used.
+     */
     protected static final int NYBBLE_LEFT = 8 - NYBBLE_SIZE;
 
     protected ArrayList<Float> xPoints = new ArrayList<Float>();

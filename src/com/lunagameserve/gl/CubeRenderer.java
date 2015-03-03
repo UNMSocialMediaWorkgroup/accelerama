@@ -1,6 +1,5 @@
 package com.lunagameserve.gl;
 
-import android.content.Context;
 import android.opengl.GLSurfaceView;
 import android.opengl.GLU;
 import com.lunagameserve.gl.geometry.Cube;
@@ -9,22 +8,32 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 /**
- * Created by Ross on 2/27/2015.
+ * A {@link android.opengl.GLSurfaceView.Renderer} which holds and renders
+ * a single {@link com.lunagameserve.gl.geometry.Cube}.
+ *
+ * @author Six
+ * @since March 2, 2015
  */
 public class CubeRenderer implements GLSurfaceView.Renderer {
 
-    private Context context;
-
+    /**
+     * The {@link com.lunagameserve.gl.geometry.Cube} which will be
+     * rendered.
+     */
     private Cube cube = new Cube();
 
+    /**
+     * Gets the {@link com.lunagameserve.gl.geometry.Cube} that is rendered
+     * using this {@link com.lunagameserve.gl.CubeRenderer}.
+     *
+     * @return The {@link com.lunagameserve.gl.geometry.Cube} that is rendered
+     *         using this {@link com.lunagameserve.gl.CubeRenderer}.
+     */
     public Cube getCube() {
         return cube;
     }
 
-    public CubeRenderer(Context context) {
-        this.context = context;
-    }
-
+    /** {@inheritDoc} */
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
         gl.glClearColor(0f, 0f, 0f, 1f);
@@ -36,6 +45,7 @@ public class CubeRenderer implements GLSurfaceView.Renderer {
         gl.glDisable(GL10.GL_DITHER);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void onSurfaceChanged(GL10 gl, int width, int height) {
         if (height == 0) {
@@ -51,6 +61,7 @@ public class CubeRenderer implements GLSurfaceView.Renderer {
         gl.glLoadIdentity();
     }
 
+    /** {@inheritDoc} */
     @Override
     public void onDrawFrame(GL10 gl) {
         gl.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
