@@ -75,6 +75,20 @@ public class ByteReader {
     }
 
     /**
+     * Reads a {@code short} from the next two bytes of the underlying
+     * {@link java.io.InputStream}.
+     *
+     * @return The {@code short} represented by the next two bytes of the
+     *         underling {@link java.io.InputStream}.
+     *
+     * @throws IOException If the underlying {@link java.io.InputStream} cannot
+     *                     be read from for any reason.
+     */
+    public int readShort() throws IOException {
+        return ByteBuffer.wrap(readBytes(2)).getShort();
+    }
+
+    /**
      * Reads a {@code byte[]} from the next specified number of bytes from the
      * underlying {@link java.io.InputStream}.
      *

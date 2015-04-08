@@ -81,6 +81,22 @@ public class ByteWriter {
     }
 
     /**
+     * Writes a {@code short} as the next two bytes of the underlying
+     * {@link java.io.OutputStream}.
+     *
+     * @param s The {@code short} to be written as the next two bytes of the
+     *          underling {@link java.io.OutputStream}.
+     *
+     * @throws IOException If the underlying {@link java.io.OutputStream} cannot
+     *                     be written to for any reason.
+     */
+    public void writeShort(short s) throws IOException {
+        byte[] bytes = new byte[2];
+        ByteBuffer.wrap(bytes).putShort(s);
+        out.write(bytes);
+    }
+
+    /**
      * Closes this {@link com.lunagameserve.compression.ByteWriter}, also
      * closing its held {@link java.io.OutputStream}.
      *

@@ -78,6 +78,10 @@ public class BitReader extends InputStream {
         return readVal;
     }
 
+    public boolean readBool() throws IOException {
+        return readBit() > 0;
+    }
+
     /**
      * Reads up to 32 bits from the underlying {@link java.io.InputStream}. If
      * there are less than 32 bits to be read, pads the rest of the return value

@@ -73,6 +73,17 @@ public class BitWriter extends OutputStream {
         }
     }
 
+    public void writeBit(boolean bit) throws IOException {
+        writeBit(bit ? 1 : 0);
+    }
+
+    public void writeOne() throws IOException {
+        writeBit(1);
+    }
+
+    public void writeZero() throws IOException {
+        writeBit(0);
+    }
     /**
      * Writes a specified number of bits, specified by the LSBs of a specified
      * {@code int}.

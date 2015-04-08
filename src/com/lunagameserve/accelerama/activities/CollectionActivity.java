@@ -11,11 +11,13 @@ import android.util.Log;
 import com.lunagameserve.accelerama.activities.util.ToastActivity;
 import com.lunagameserve.acceleration.AccelerationCollection;
 import com.lunagameserve.acceleration.AccelerationPoint;
+import com.lunagameserve.compression.ByteWriter;
 import com.lunagameserve.gl.CubeRenderer;
 import com.lunagameserve.gl.geometry.Util;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -54,6 +56,10 @@ public class CollectionActivity extends ToastActivity
      */
     private Sensor rotation;
 
+    private Sensor lightSensor;
+
+    private ArrayList<Float> lightPoints = new ArrayList<Float>();
+
     /**
      * A thread-safe flag which describes the current status of the
      * {@link android.hardware.Sensor}s in this
@@ -83,6 +89,8 @@ public class CollectionActivity extends ToastActivity
      */
     private AccelerationCollection points = new AccelerationCollection();
 
+    private final boolean COLLECT_ACCELERATION = false;
+
     /** {@inheritDoc} */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,6 +101,8 @@ public class CollectionActivity extends ToastActivity
                 sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
             accelerometer =
                 sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+            lightSensor =
+                sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
             GLSurfaceView glView = new GLSurfaceView(this);
             this.renderer = new CubeRenderer();
             glView.setRenderer(this.renderer);
@@ -103,6 +113,8 @@ public class CollectionActivity extends ToastActivity
                              accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
             sensorManager.registerListener(this,
                                   rotation, SensorManager.SENSOR_DELAY_FASTEST);
+            sensorManager.registerListener(this,
+                               lightSensor, SensorManager.SENSOR_DELAY_FASTEST);
         }
     }
 
@@ -112,26 +124,44 @@ public class CollectionActivity extends ToastActivity
         if (collecting.get()) {
             if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
 
-                AccelerationPoint pt =
-                        new AccelerationPoint(event.values, System.nanoTime());
-
-                if (pt.valid()) {
-                    points.addPoint(pt);
-                }
-
                 renderer.getCube().translate(event.values[0] * -0.1f,
                                              event.values[1] * -0.1f,
                                              event.values[2] * -0.1f);
+
+                if (COLLECT_ACCELERATION) {
+                    AccelerationPoint pt =
+                            new AccelerationPoint(event.values,
+                                    System.nanoTime());
+
+                    if (pt.valid()) {
+                        points.addPoint(pt);
+                    }
+                }
 
                 long maxTicks = 1000000000L * SECONDS;
                 if ((System.nanoTime() - startTime) > maxTicks) {
                     onCollectionFinished("Collection finished.", true);
                 }
             } else if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+
+                float[] eulers = Util.quaternionToEuclidean(event.values);
+
                 renderer.getCube().rotate(
-                        Util.radToDeg((float)(event.values[0] * Math.PI)),
-                        Util.radToDeg((float)(event.values[1] * Math.PI)),
-                        Util.radToDeg((float)(event.values[2] * Math.PI)));
+                        Util.radToDeg((float)(eulers[0] * Math.PI)),
+                        Util.radToDeg((float)(eulers[1] * Math.PI)),
+                        Util.radToDeg((float)(eulers[2] * Math.PI)));
+
+                if (!COLLECT_ACCELERATION) {
+                    AccelerationPoint pt =
+                            new AccelerationPoint(eulers,
+                                                  System.nanoTime());
+
+                    if (pt.valid()) {
+                        points.addPoint(pt);
+                    }
+                }
+            } else if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
+                lightPoints.add(event.values[0]);
             }
         }
     }
@@ -156,15 +186,25 @@ public class CollectionActivity extends ToastActivity
         Bundle bundle = null;
         if (pushResults) {
             try {
+                /* Write acceleration points to bundle */
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
 
                 points.writeAsBytes(out);
 
                 out.close();
+                byte[] accelBytes = out.toByteArray();
+
+                /* Write light points to bundle */
+                out = new ByteArrayOutputStream();
+                ByteWriter writer = new ByteWriter(out);
+                for (Float lightPoint : lightPoints) {
+                    writer.writeFloat(lightPoint);
+                }
+                writer.close();
 
                 bundle = new Bundle();
-                bundle.putByteArray("points", out.toByteArray());
-
+                bundle.putByteArray("lightPoints", out.toByteArray());
+                bundle.putByteArray("points", accelBytes);
             } catch (IOException e) {
                 e.printStackTrace();
             }
